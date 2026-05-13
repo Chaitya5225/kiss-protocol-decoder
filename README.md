@@ -21,6 +21,23 @@ This module is designed to receive an incoming stream of framed bytes, dynamical
 * `TFEND` (Transposed Frame End): `0xDC`
 * `TFESC` (Transposed Frame Escape): `0xDD`
 
+```mermaid
+stateDiagram-v2
+    direction LR
+    [*] --> IDLE : Reset
+    
+    IDLE --> PAYLOAD : rx_data == 8'hC0 (FEND)<br>[start_frame=1, count=0]
+    
+    PAYLOAD --> PAYLOAD : Normal Data<br>[data_out=rx_data, valid=1, count++]
+    PAYLOAD --> ESCAPE : rx_data == 8'hDB (FESC)
+    
+    %% Combined return paths to reduce line clutter
+    PAYLOAD --> IDLE : rx_data == 8'hC0 (FEND) OR count == 256<br>[end_frame=1]
+    
+    ESCAPE --> PAYLOAD : rx_data == 8'hDC/8'hDD [Decode]<br>OR Invalid Escape [Drop]
+    ESCAPE --> IDLE : rx_data == 8'hC0 (Error) OR count == 256<br>[end_frame=1]
+```
+
 ## Simulation & Verification
 The design was functionally verified using a custom Verilog testbench. The verification suite covers:
 1. Standard data payloads.
